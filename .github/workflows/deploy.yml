@@ -18,6 +18,14 @@ jobs:
         with:
           path: ./source
 
+      - name: Debug user and permissions
+        run: |
+          echo "Current user: $(whoami)"
+          echo "Current directory permissions for /srv/caddy/tourpointer:"
+          ls -ld /srv/caddy/tourpointer
+          echo "File permissions in /srv/caddy/tourpointer:"
+          ls -l /srv/caddy/tourpointer
+
       - name: Build app
         run: docker-compose up --build
 
