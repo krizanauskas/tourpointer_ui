@@ -23,5 +23,5 @@ jobs:
 
       - name: Copy build files to caddy serve path
         run: |
-          rm -rf /home/core/apps/build/tourpointer/*
-          cp -r ./build/* /home/core/apps/build/tourpointer/
+          rm -rf /var/lib/caddy/tourpointer/*
+          cp -r ./build/* /var/lib/caddy/tourpointer/
