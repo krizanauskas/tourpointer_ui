@@ -15,3 +15,8 @@ jobs:
 
       - name: Build app
         run: docker-compose up --build
+
+      - name: Copy build files to caddy serve path
+        run: |
+          sudo rm -rf /home/core/apps/build/tourpointer/*
+          sudo cp -r ./build/* /home/core/apps/build/tourpointer/
