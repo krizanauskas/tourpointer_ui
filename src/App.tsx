@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
-import TripPlanForm from './pages/TripPlanForm'
+import Plan from './pages/Plan'
 import TripPlanResult from './pages/TripPlanResult'
 import { Provider } from 'react-redux';
 import { store } from './redux/store';
@@ -22,7 +22,7 @@ function App() {
         <>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/plan" element={<TripPlanForm />} />
+          <Route path="/plan" element={<Plan />} />
           <Route path="/plan/results" element={<TripPlanResult />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

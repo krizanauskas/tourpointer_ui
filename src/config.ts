@@ -3,7 +3,8 @@ const config = {
       baseUrl: import.meta.env.VITE_API_BASE_URL,
       version: 'v1',
       endpoints: {
-        planTrip: '/trips/plan',
+        points: '/points',
+        autocomplete: '/routes/autocomplete?search=',
       },
     },
   };
