@@ -11,6 +11,8 @@ export type AutocompleteItem = {
 type AutocompleteProps = {
     onSelect: (selected: AutocompleteItem) => void;
     initialValue: AutocompleteItem | null;
+    label: string;
+    placeholder: string;
 };
 
 async function getAsyncData(searchQuery: string, signal: AbortSignal): Promise<AutocompleteItem[]> {
@@ -40,7 +42,7 @@ async function getAsyncData(searchQuery: string, signal: AbortSignal): Promise<A
     }
 }
 
-export function Autocomplete({ onSelect, initialValue }: AutocompleteProps) {
+export function Autocomplete({ onSelect, initialValue, label, placeholder }: AutocompleteProps) {
     const combobox = useCombobox({
         onDropdownClose: () => combobox.resetSelectedOption(),
     });
@@ -122,8 +124,8 @@ export function Autocomplete({ onSelect, initialValue }: AutocompleteProps) {
             >
                 <Combobox.Target>
                     <TextInput
-                        label="Pick value or type anything"
-                        placeholder="Search groceries"
+                        label={label}
+                        placeholder={placeholder}
                         value={value} // Display name in the input
                         onChange={(event) => {
                             setValue(event.currentTarget.value);

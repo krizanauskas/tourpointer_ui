@@ -1,12 +1,11 @@
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import { useState, useEffect, useRef } from 'react';
 import axios, { AxiosError } from 'axios';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import 'leaflet-routing-machine'; // Import the routing machine
-import config from "../config.ts";
 import 'leaflet-control-geocoder/dist/Control.Geocoder.css';
 import 'leaflet-control-geocoder';
+import config from "../config.ts";
 
 type Point = {
     lat: number;
@@ -23,8 +22,10 @@ export default function Home() {
     const [points, setPoints] = useState<Point[]>([]); // State to store points
     const [loading, setLoading] = useState(true); // State to handle loading status
     const [error, setError] = useState(''); // State to handle errors
-    const [route, setRoute] = useState<Coordinate[]>([]);
-    const mapRef = useRef(null); // Reference for the map container
+    const [route, setRoute] = useState<Coordinate[]>([]); // Route coordinates
+    const mapRef = useRef<HTMLDivElement | null>(null); // Reference for the map container
+    const mapInstance = useRef<L.Map | null>(null); // Store the map instance to avoid re-initialization
+    const routingControl = useRef<L.Routing.Control | null>(null); // Store the routing control instance
 
     // Fetch points from the API
     useEffect(() => {
@@ -41,7 +42,6 @@ export default function Home() {
 
         const fetchRoute = async () => {
             try {
-                // Using hardcoded coordinates as an example, but can use dynamic ones from the points
                 const from = 'ChIJFfwGvzWR3UYRQchcSTAQWhI';
                 const to = 'ChIJofRUayva5EYRCCz_gHAOKpk';
 
@@ -54,38 +54,56 @@ export default function Home() {
             }
         };
 
-        fetchRoute();
-        fetchPoints();
+        // fetchRoute();
+        // fetchPoints();
     }, []);
 
     useEffect(() => {
-        if (mapRef.current && points.length > 0 && route.length > 0) {
-            const map = mapRef.current;
-
-            // Initialize Leaflet map
-            const leafletMap = L.map(map).setView([points[0].lat, points[0].lng], 13);
+        // Check if the map is already initialized
+        if (!mapInstance.current && mapRef.current) {
+            // Initialize Leaflet map only once
+            mapInstance.current = L.map(mapRef.current).setView([points[0]?.lat || 51.505, points[0]?.lng || -0.09], 13);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            }).addTo(leafletMap);
+            }).addTo(mapInstance.current);
+        }
 
-            // Create a routing control to display the route along roads
-            const routeControl = L.Routing.control({
-                waypoints: [
-                    L.latLng(route[0].lat, route[0].lng),
-                    L.latLng(route[route.length - 1].lat, route[route.length - 1].lng),
-                ],
-                createMarker: () => null, // Optionally disable markers at waypoints
-                routeWhileDragging: true, // Allow route update while dragging
-                geocoder: L.Control.Geocoder.nominatim(), // Geocoder for addresses if needed
-            }).addTo(leafletMap);
-
-            // Add markers for the points
+        // Add markers for the points only after map is initialized
+        if (mapInstance.current && points.length > 0) {
             points.forEach((point) => {
-                L.marker([point.lat, point.lng]).addTo(leafletMap).bindPopup(point.name);
+                // Check if point data is valid
+                if (point.lat && point.lng) {
+                    L.marker([point.lat, point.lng])
+                        .addTo(mapInstance.current)
+                        .bindPopup(point.name);
+                }
             });
         }
-    }, [points, route]);
+
+        // Update the route when the route data changes
+        if (route.length > 0 && mapInstance.current) {
+            // Create or update the routing control
+            if (routingControl.current) {
+                // If routing control already exists, set the new waypoints
+                routingControl.current.setWaypoints([
+                    L.latLng(route[0]?.lat, route[0]?.lng),
+                    L.latLng(route[route.length - 1]?.lat, route[route.length - 1]?.lng),
+                ]);
+            } else {
+                // Create the routing control if it doesn't exist
+                routingControl.current = L.Routing.control({
+                    waypoints: [
+                        L.latLng(route[0]?.lat, route[0]?.lng),
+                        L.latLng(route[route.length - 1]?.lat, route[route.length - 1]?.lng),
+                    ],
+                    createMarker: () => null, // Optionally disable markers at waypoints
+                    routeWhileDragging: true, // Allow route update while dragging
+                    geocoder: L.Control.Geocoder.nominatim(), // Geocoder for addresses if needed
+                }).addTo(mapInstance.current);
+            }
+        }
+    }, [points, route]); // Only re-run when points or route data changes
 
     return (
         <div>
