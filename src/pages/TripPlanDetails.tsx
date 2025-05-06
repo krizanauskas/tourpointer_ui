@@ -2,17 +2,16 @@ import { useParams } from 'react-router-dom';
 import {useState, useEffect, useRef} from 'react';
 import axios from 'axios';
 import config from "../config";
-import { ActionIcon, Badge, Card, Group, Image, Text } from '@mantine/core';
-import {AutocompleteItem} from "../components/autocomplete.tsx";
+import { Badge, Card, Group, Image, Text, Modal } from '@mantine/core';
 import { Box, Button } from '@mantine/core';
 import classes from './badge-card.module.css';
 import { Timeline } from '@mantine/core';
 import { Container, Flex } from '@mantine/core';
-import { LatLngExpression } from "leaflet";
+import { useDisclosure } from '@mantine/hooks';
 
 import { useLayoutEffect } from 'react';
 
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { LatLngBounds } from 'leaflet';
 
 import L from 'leaflet';
@@ -40,8 +39,8 @@ interface RouteData {
     ending_point: string; // Ending point address
     direction_id: string;
     points_of_interest: PointOfInterest[];
-    from_direction: LatLngExpression
-    to_direction: LatLngExpression
+    from_direction: [number, number]
+    to_direction: [number, number]
 }
 
 const status = 'status'
@@ -63,6 +62,9 @@ const TripPlanDetails = () => {
   const mapInstance = useRef<L.Map | null>(null);
   const routingControl = useRef<L.Routing.Control | null>(null);
   const [points, setPoints] = useState<Point[]>([]);
+  const [route, setRoute] = useState([]);
+  const [recalculateAttractionsModalOpened, { open: openRecalculateAttractionsModal, close: closeRecalculateAttractionsModal }] = useDisclosure(false);
+  const [isReordered, setIsReordered] = useState(false);
 
   useEffect(() => {
       console.log('useEffect triggered');
@@ -71,6 +73,8 @@ const TripPlanDetails = () => {
               const response = await axios.get(`${config.api.baseUrl}/routes/trips/${id}`);
 
               setRouteData(response.data.data)
+
+
           } catch (err) {
               console.error('Error fetching route:', err);
           }
@@ -80,21 +84,113 @@ const TripPlanDetails = () => {
 
   }, []);
 
-    useLayoutEffect(() => {
-      console.log(mapRef.current);
-      if (!mapInstance.current && mapRef.current) {
-        mapInstance.current = L.map(mapRef.current).setView([54.7244379, 25.2876549], 13);
+  const reorderAttractions = async() => {
+    if (routeData === null || !routeData.from_direction || !routeData.to_direction) return;
 
-        const fromDirection = L.latLng(54.7244379, 25.2876549);
-        const toDirection = L.latLng(54.7244379, 25.2876549);
+    notifications.show({
+      position: 'bottom-right',
+      title: "Reordering attractions",
+      message: `Reordering attractions by distance in progress`,
+      color: 'blue',
+      loading: false,
+      autoClose: 2000
+    })
 
-        const bounds = L.latLngBounds(fromDirection, toDirection);
+    const waypoints = [
+      routeData.from_direction,
+      ...(routeData.points_of_interest ? routeData.points_of_interest.map((poi) => poi.location.coordinates) : []),
+      routeData.to_direction,
+    ];
 
-        mapInstance.current.fitBounds(bounds);
-      }
-    }, []);
+    const osrmCoordinates = waypoints.map(([lat, lng]) => `${lng},${lat}`).join(";");
 
-    const fetchAttractions = async () => {
+    const osrmUrl = `https://router.project-osrm.org/trip/v1/driving/${osrmCoordinates}?roundtrip=false&source=first&destination=last`;
+
+    fetch(osrmUrl)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.code === "Ok") {
+          const reorderedPointsOfInterest: PointOfInterest[] = new Array(routeData.points_of_interest.length)
+          const waypoints = data.waypoints.slice(1, data.waypoints.length -1)
+
+          waypoints.forEach((waypoint, index) => {
+            const sortedIndex = waypoint.waypoint_index - 1; // Assuming each waypoint has a 'point_of_interest_index'
+
+            reorderedPointsOfInterest[sortedIndex] = routeData.points_of_interest[index];
+          });
+
+
+          setRouteData(prevState => {
+            if (!prevState) return null;
+
+            return {
+              ...prevState,
+              points_of_interest: reorderedPointsOfInterest
+            };
+          });
+
+          setIsReordered(true);
+        }
+      })
+      .catch((err) => console.error("Error fetching route:", err));
+
+      notifications.show({
+        position: 'bottom-right',
+        title: "Calculating route",
+        message: `Calculating route for attractions`,
+        color: 'blue',
+        loading: false,
+        autoClose: 2000
+      })
+  }
+
+  useEffect(() => {
+    if (isReordered) {
+      calculateRoute(); // Only run after reordering
+      setIsReordered(false); // Reset flag after calculation
+    }
+  }, [isReordered]);
+
+  useLayoutEffect(() => {
+    console.log(mapRef.current);
+    if (!mapInstance.current && mapRef.current) {
+      mapInstance.current = L.map(mapRef.current).setView([54.7244379, 25.2876549], 13);
+
+      const fromDirection = L.latLng(54.7244379, 25.2876549);
+      const toDirection = L.latLng(54.7244379, 25.2876549);
+
+      const bounds = L.latLngBounds(fromDirection, toDirection);
+
+      mapInstance.current.fitBounds(bounds);
+    }
+  }, []);
+
+  const calculateRoute = async () => {
+    if (!routeData.from_direction || !routeData.to_direction) return;
+
+    const waypoints = [
+      routeData.from_direction, // Start
+      ...routeData.points_of_interest.map((poi) => poi.location.coordinates), // POIs
+      routeData.to_direction, // End
+    ];
+
+    // Convert to OSRM format: "lng,lat;lng,lat;..."
+    const osrmCoordinates = waypoints.map(([lat, lng]) => `${lng},${lat}`).join(";");
+
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${osrmCoordinates}?geometries=geojson&overview=full`;
+
+    fetch(osrmUrl)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.code === "Ok") {
+          const coords = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+          setRoute(coords);
+        }
+      })
+      .catch((err) => console.error("Error fetching route:", err));
+  };
+
+  const fetchAttractions = async () => {
         if (!routeData) {
             return; // Exit early if routeData is not available
         }
@@ -149,6 +245,8 @@ const TripPlanDetails = () => {
     setRouteData(prevState => {
       if (!prevState) return null;
 
+      openRecalculateAttractionsModal()
+
       return {
         ...prevState,
         points_of_interest: [
@@ -161,6 +259,8 @@ const TripPlanDetails = () => {
   const removeAttractionFromRouteData  = (pointOfInterest: PointOfInterest) => {
     setRouteData(prevState => {
       if (!prevState) return null;
+
+      openRecalculateAttractionsModal()
 
       return {
         ...prevState,
@@ -181,9 +281,23 @@ const TripPlanDetails = () => {
         attractions: attractionIds, // Array of PointOfInterest Ids
       });
 
-      console.log("Plan saved successfully:", response.data);
+      notifications.show({
+        position: 'bottom-right',
+        title: "Plan saved",
+        message: `Plan saved successfully`,
+        color: 'blue',
+        loading: false,
+        autoClose: 4000
+      })
     } catch (error) {
-      console.error("Error saving plan:", error);
+      notifications.show({
+        position: 'bottom-right',
+        title: "Plan saved",
+        message: error.response?.data?.message || error.message,
+        color: 'blue',
+        loading: false,
+        autoClose: 4000
+      })
     }
   };
 
@@ -216,6 +330,21 @@ const TripPlanDetails = () => {
           {activeTab === status && <Flex style={{ flex: 1}} direction="column">
           {routeData ? (
             <Container flex={1} style={{paddingBottom: '20px'}}>
+              <Button onClick={reorderAttractions}>Reorder attractions </Button>
+              <Button onClick={calculateRoute}>Calculate Route </Button>
+
+              <Modal opened={recalculateAttractionsModalOpened} onClose={closeRecalculateAttractionsModal} title="Recalculate route?" zIndex={3000}>
+                Selected attractions changed, recalculate route?
+                <Group mt="lg" justify="flex-end">
+                  <Button onClick={() => {closeRecalculateAttractionsModal(); reorderAttractions()}} color="blue">
+                    Recalculate
+                  </Button>
+                  <Button onClick={closeRecalculateAttractionsModal} variant="default">
+                    Cancel
+                  </Button>
+                </Group>
+              </Modal>
+
               <MapContainer bounds={new LatLngBounds(routeData.from_direction, routeData.to_direction)} style={{ width: '100%', height: '500px' }}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <Marker position={routeData.from_direction}>
@@ -230,7 +359,9 @@ const TripPlanDetails = () => {
                     <Popup>{poi.name}</Popup>
                   </Marker>
                 ))}
-              </MapContainer>;
+
+                {route.length > 0 && <Polyline positions={route} color="blue" />}
+              </MapContainer>
 
 
               <h1>Route Information</h1>
