@@ -3,7 +3,7 @@ version: '3.8'
 services:
   app:
     image: node:20-alpine
-    container_name: tourpointer-ui-builder
+    container_name: route-suggestor-ui-builder
     working_dir: /app
     volumes:
       - ./:/app

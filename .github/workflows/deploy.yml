@@ -20,12 +20,13 @@ jobs:
 
       - name: Create .env.production file
         run: |
-          echo "VITE_API_BASE_URL=https://tourpointer-api.tomaskri.com" > .env.production
+          echo "VITE_API_BASE_URL=https://route-suggestor-api.tomaskri.com" > .env.production
 
       - name: Build app
         run: docker-compose up --build
 
       - name: Copy build files to caddy serve path
         run: |
-          sudo rm -rf /srv/caddy/tourpointer/*
-          sudo cp -r ./build/* /srv/caddy/tourpointer/
+          sudo mkdir -p /srv/caddy/route-suggestor
+          sudo rm -rf /srv/caddy/route-suggestor/*
+          sudo cp -r ./build/* /srv/caddy/route-suggestor/
