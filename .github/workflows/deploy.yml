@@ -23,7 +23,8 @@ jobs:
           echo "VITE_API_BASE_URL=https://route-suggestor-api.tomaskri.com" > .env.production
 
       - name: Build app
-        run: docker-compose up --build
+        run: ls -l |
+          docker-compose up --build
 
       - name: Copy build files to caddy serve path
         run: |
