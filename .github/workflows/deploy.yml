@@ -10,6 +10,15 @@ jobs:
     runs-on: self-hosted
 
     steps:
+      - name: Print user information
+        run: |
+          echo "User running this step:"
+          whoami
+          echo "Current user ID and group ID:"
+          id
+          echo "List of current user's home directory files:"
+          ls -la ~
+
       - name: Clean workspace directory
         run: sudo rm -rf "${{ github.workspace }}/*"
 
