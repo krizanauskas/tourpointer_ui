@@ -20,6 +20,9 @@ jobs:
         run: |
           echo "VITE_API_BASE_URL=http://route-suggestor-api.tomaskri.com" > .env.production
 
+      - name: Remove existing container if it exists
+        run: docker rm -f route-suggestor-ui-builder || true
+
       - name: Build app
         run: docker-compose up --build
 

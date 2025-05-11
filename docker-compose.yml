@@ -5,9 +5,6 @@ services:
     image: node:20-alpine
     container_name: route-suggestor-ui-builder
     working_dir: /app
-    environment:
-      - HOST_UID=${UID}
-      - HOST_GID=${GID}
     volumes:
       - ./:/app
     user: "${HOST_UID}:${HOST_GID}"
