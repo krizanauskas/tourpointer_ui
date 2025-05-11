@@ -18,7 +18,7 @@ jobs:
 
       - name: Create .env.production file
         run: |
-          echo "VITE_API_BASE_URL=http://route-suggestor-api.tomaskri.com" > ./ui_source/.env.production
+          echo "VITE_API_BASE_URL=http://route-suggestor-api.tomaskri.com" > .env.production
 
       - name: Build app
         run: docker-compose up --build
