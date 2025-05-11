@@ -30,4 +30,4 @@ jobs:
         run: |
           sudo mkdir -p /srv/caddy/route-suggestor
           sudo rm -rf /srv/caddy/route-suggestor/*
-          sudo cp -r ./build/* /srv/caddy/route-suggestor/
+          sudo cp -r ./dist/* /srv/caddy/route-suggestor/
