@@ -28,6 +28,7 @@ interface PointOfInterest {
         type: string;
         coordinates: [number, number]; // [longitude, latitude]
     };
+    distanceTo: number | null;
     photos: any | null; // Assuming photos can be null, but can be expanded further if needed
     apiPhotos: string[]; // Array of photo URLs
 }
@@ -84,6 +85,27 @@ const TripPlanDetails = () => {
 
   }, []);
 
+  useEffect(() => {
+    if (isReordered) {
+      calculateRoute(); // Only run after reordering
+      setIsReordered(false); // Reset flag after calculation
+    }
+  }, [isReordered]);
+
+  useLayoutEffect(() => {
+    console.log(mapRef.current);
+    if (!mapInstance.current && mapRef.current) {
+      mapInstance.current = L.map(mapRef.current).setView([54.7244379, 25.2876549], 13);
+
+      const fromDirection = L.latLng(54.7244379, 25.2876549);
+      const toDirection = L.latLng(54.7244379, 25.2876549);
+
+      const bounds = L.latLngBounds(fromDirection, toDirection);
+
+      mapInstance.current.fitBounds(bounds);
+    }
+  }, []);
+
   const reorderAttractions = async() => {
     if (routeData === null || !routeData.from_direction || !routeData.to_direction) return;
 
@@ -110,11 +132,19 @@ const TripPlanDetails = () => {
       .then((res) => res.json())
       .then((data) => {
         if (data.code === "Ok") {
+          console.log(data)
+
           const reorderedPointsOfInterest: PointOfInterest[] = new Array(routeData.points_of_interest.length)
+
+          //starting location and end location
           const waypoints = data.waypoints.slice(1, data.waypoints.length -1)
 
+          routeData.distance_km = +(data.trips[0].distance / 1000).toFixed(2)
+
           waypoints.forEach((waypoint, index) => {
-            const sortedIndex = waypoint.waypoint_index - 1; // Assuming each waypoint has a 'point_of_interest_index'
+            const sortedIndex = waypoint.waypoint_index - 1;
+
+            routeData.points_of_interest[index].distanceTo = +(data.trips[0].legs[index].distance / 1000).toFixed(2);
 
             reorderedPointsOfInterest[sortedIndex] = routeData.points_of_interest[index];
           });
@@ -134,36 +164,15 @@ const TripPlanDetails = () => {
       })
       .catch((err) => console.error("Error fetching route:", err));
 
-      notifications.show({
-        position: 'bottom-right',
-        title: "Calculating route",
-        message: `Calculating route for attractions`,
-        color: 'blue',
-        loading: false,
-        autoClose: 2000
-      })
+    notifications.show({
+      position: 'bottom-right',
+      title: "Calculating route",
+      message: `Calculating route for attractions`,
+      color: 'blue',
+      loading: false,
+      autoClose: 2000
+    })
   }
-
-  useEffect(() => {
-    if (isReordered) {
-      calculateRoute(); // Only run after reordering
-      setIsReordered(false); // Reset flag after calculation
-    }
-  }, [isReordered]);
-
-  useLayoutEffect(() => {
-    console.log(mapRef.current);
-    if (!mapInstance.current && mapRef.current) {
-      mapInstance.current = L.map(mapRef.current).setView([54.7244379, 25.2876549], 13);
-
-      const fromDirection = L.latLng(54.7244379, 25.2876549);
-      const toDirection = L.latLng(54.7244379, 25.2876549);
-
-      const bounds = L.latLngBounds(fromDirection, toDirection);
-
-      mapInstance.current.fitBounds(bounds);
-    }
-  }, []);
 
   const calculateRoute = async () => {
     if (!routeData.from_direction || !routeData.to_direction) return;
@@ -183,6 +192,8 @@ const TripPlanDetails = () => {
       .then((res) => res.json())
       .then((data) => {
         if (data.code === "Ok") {
+          console.log(data)
+
           const coords = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
           setRoute(coords);
         }
@@ -278,7 +289,8 @@ const TripPlanDetails = () => {
       const url = `${config.api.baseUrl}/routes/trips/${id}`;
 
       const response = await axios.patch(url, {
-        attractions: attractionIds, // Array of PointOfInterest Ids
+        attractions: attractionIds, // Array of PointOfInterest Ids by order
+        distance_km: routeData?.distance_km
       });
 
       notifications.show({
@@ -368,14 +380,17 @@ const TripPlanDetails = () => {
               <p>Starting Point: {routeData.starting_point}</p>
               <p>Ending Point: {routeData.ending_point}</p>
               <p>Distance: {routeData.distance_km} km</p>
-              <p>Travel Time: {routeData.travel_time} ms</p>
+              {/*<p>Travel Time: {routeData.travel_time} ms</p>*/}
 
               <h2>Points of Interest:</h2>
               <Timeline color="indigo" radius="lg" active={0} lineWidth={3} bulletSize={23}>
 
                 {routeData.points_of_interest && routeData.points_of_interest.map((poi) => (
-                  <Timeline.Item key={poi.Id} title={poi.name}>
-                    <Text c="dimmed" size="sm">Types: {poi.types.join(', ')}</Text>
+                  <Timeline.Item
+                    key={poi.Id}
+                    title={`${poi.name}${poi.distanceTo !== undefined ? ` (${poi.distanceTo} km away)` : ''}`}
+                  >
+                  <Text c="dimmed" size="sm">Types: {poi.types.join(', ')}</Text>
                     <Text size="xs" mt={4}>Coordinates: {poi.location.coordinates.join(', ')}</Text>
                   </Timeline.Item>
                 ))}
@@ -408,12 +423,12 @@ const TripPlanDetails = () => {
           </Box>
       </Flex> }
       {activeTab === attractions &&
-      <div class="details__attractions">
+      <div className="details__attractions">
           <div className="details__attractions-inner">
             <h1>attractions</h1>
 
             {loadedPointsOfInterest ? (
-              <div class="details__attractions-body">
+              <div className="details__attractions-body">
                 {loadedPointsOfInterest.map((pointOfInterest: PointOfInterest) => {
                   const isAdded = routeData?.points_of_interest?.some(poi => poi.Id === pointOfInterest.Id); // Declare before JSX return
 
