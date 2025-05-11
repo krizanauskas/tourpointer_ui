@@ -15,18 +15,16 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          path: ./ui_source
 
       - name: Create .env.production file
         run: |
           echo "VITE_API_BASE_URL=http://route-suggestor-api.tomaskri.com" > ./ui_source/.env.production
 
       - name: Build app
-        run: cd ./ui_source && docker-compose up --build
+        run: docker-compose up --build
 
       - name: Copy build files to caddy serve path
         run: |
           sudo mkdir -p /srv/caddy/route-suggestor
           sudo rm -rf /srv/caddy/route-suggestor/*
-          sudo cp -r ./ui_source/build/* /srv/caddy/route-suggestor/
+          sudo cp -r ./build/* /srv/caddy/route-suggestor/
