@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Clean workspace directory
-        run: rm -rf "${{ github.workspace }}/*"
+        run: sudo rm -rf "${{ github.workspace }}/*"
 
       - name: Checkout code
         uses: actions/checkout@v3
