@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import {useState, useEffect, useRef} from 'react';
-import axios from 'axios';
+import axios from '../api/axiosSetup';
 import config from "../config";
 import { Badge, Card, Group, Image, Text, Modal } from '@mantine/core';
 import { Box, Button } from '@mantine/core';

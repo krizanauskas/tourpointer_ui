@@ -1,7 +1,8 @@
 import { Autocomplete, AutocompleteItem } from '../components/autocomplete.tsx'
 import { Button, Space  } from '@mantine/core';
-import { useState, useEffect } from 'react';
-import axios, { AxiosError } from 'axios';
+import { useState } from 'react';
+import { AxiosError } from 'axios';
+import axios from '../api/axiosSetup';
 import { useNavigate } from 'react-router-dom';
 import config from "../config.ts";
 import {notifications} from "@mantine/notifications";

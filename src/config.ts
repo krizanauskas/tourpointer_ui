@@ -6,6 +6,7 @@ const config = {
         directions: '/routes/directions',
         autocomplete: '/routes/autocomplete?search=',
         attractions: '/routes/directions/:id/points-of-interest',
+        login: '/login',
       },
     },
   };
