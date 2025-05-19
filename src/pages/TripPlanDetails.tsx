@@ -53,6 +53,12 @@ type Point = {
   name: string;
 };
 
+const markerIcon = new L.Icon({
+  iconUrl: '/marker-icon.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+
 const TripPlanDetails = () => {
   const { id } = useParams();
   const [routeData, setRouteData] = useState<RouteData | null>(null);
@@ -359,15 +365,15 @@ const TripPlanDetails = () => {
 
               <MapContainer bounds={new LatLngBounds(routeData.from_direction, routeData.to_direction)} style={{ width: '100%', height: '500px' }}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                <Marker position={routeData.from_direction}>
+                <Marker position={routeData.from_direction} icon={markerIcon}>
                   <Popup>Start Location</Popup>
                 </Marker>
-                <Marker position={routeData.to_direction}>
+                <Marker position={routeData.to_direction} icon={markerIcon}>
                   <Popup>End Location</Popup>
                 </Marker>
 
                 {routeData.points_of_interest && routeData.points_of_interest.map((poi) => (
-                  <Marker key={poi.Id} position={poi.location.coordinates}>
+                  <Marker key={poi.Id} position={poi.location.coordinates} icon={markerIcon}>
                     <Popup>{poi.name}</Popup>
                   </Marker>
                 ))}
